@@ -1,13 +1,14 @@
 import copy
 import math
-import numpy as np
 import torch
 from torch import nn
 from torch.nn import functional as F
 
 import commons
-import modules
-from torch.nn.utils import weight_norm, remove_weight_norm
+import logging
+
+logger = logging.getLogger(__name__)
+
 class LayerNorm(nn.Module):
   def __init__(self, channels, eps=1e-5):
     super().__init__()
@@ -43,11 +44,11 @@ class Encoder(nn.Module):
     self.kernel_size = kernel_size
     self.p_dropout = p_dropout
     self.window_size = window_size
-    if isflow:
-      cond_layer = torch.nn.Conv1d(256, 2*hidden_channels*n_layers, 1)
-      self.cond_pre = torch.nn.Conv1d(hidden_channels, 2*hidden_channels, 1)
-      self.cond_layer = weight_norm(cond_layer, name='weight')
-      self.gin_channels = 256
+    #if isflow:
+    #  cond_layer = torch.nn.Conv1d(256, 2*hidden_channels*n_layers, 1)
+    #  self.cond_pre = torch.nn.Conv1d(hidden_channels, 2*hidden_channels, 1)
+    #  self.cond_layer = weight_norm(cond_layer, name='weight')
+    #  self.gin_channels = 256
     self.cond_layer_idx = self.n_layers
     if 'gin_channels' in kwargs:
       self.gin_channels = kwargs['gin_channels']
@@ -55,7 +56,7 @@ class Encoder(nn.Module):
         self.spk_emb_linear = nn.Linear(self.gin_channels, self.hidden_channels)
         # vits2 says 3rd block, so idx is 2 by default
         self.cond_layer_idx = kwargs['cond_layer_idx'] if 'cond_layer_idx' in kwargs else 2
-        print(self.gin_channels, self.cond_layer_idx)
+        logging.debug(self.gin_channels, self.cond_layer_idx)
         assert self.cond_layer_idx < self.n_layers, 'cond_layer_idx should be less than n_layers'
     self.drop = nn.Dropout(p_dropout)
     self.attn_layers = nn.ModuleList()

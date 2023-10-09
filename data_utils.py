@@ -4,7 +4,6 @@ import random
 import numpy as np
 import torch
 import torch.utils.data
-import torchaudio
 import commons
 from mel_processing import spectrogram_torch, mel_spectrogram_torch, spec_to_mel_torch
 from utils import load_wav_to_torch, load_filepaths_and_text
@@ -81,28 +80,19 @@ class TextAudioSpeakerLoader(torch.utils.data.Dataset):
         return (phones, spec, wav, sid, tone, language, bert)
 
     def get_audio(self, filename):
-        audio_norm, sampling_rate = torchaudio.load(filename, frame_offset=0, num_frames=-1, normalize=True, channels_first=True)
-        '''
         audio, sampling_rate = load_wav_to_torch(filename)
         if sampling_rate != self.sampling_rate:
             raise ValueError("{} {} SR doesn't match target {} SR".format(
                 sampling_rate, self.sampling_rate))
         audio_norm = audio / self.max_wav_value
         audio_norm = audio_norm.unsqueeze(0)
-        '''
         spec_filename = filename.replace(".wav", ".spec.pt")
         if self.use_mel_spec_posterior:
             spec_filename = spec_filename.replace(".spec.pt", ".mel.pt")
-        if os.path.exists(spec_filename):
+        try:
             spec = torch.load(spec_filename)
-        else:
+        except:
             if self.use_mel_spec_posterior:
-                # if os.path.exists(filename.replace(".wav", ".spec.pt")):
-                #     # spec, n_fft, num_mels, sampling_rate, fmin, fmax
-                #     spec = spec_to_mel_torch(
-                #         torch.load(filename.replace(".wav", ".spec.pt")), 
-                #         self.filter_length, self.n_mel_channels, self.sampling_rate,
-                #         self.hparams.mel_fmin, self.hparams.mel_fmax)
                 spec = mel_spectrogram_torch(audio_norm, self.filter_length,
                     self.n_mel_channels, self.sampling_rate, self.hop_length,
                     self.win_length, self.hparams.mel_fmin, self.hparams.mel_fmax, center=False)
@@ -115,7 +105,6 @@ class TextAudioSpeakerLoader(torch.utils.data.Dataset):
         return spec, audio_norm
 
     def get_text(self, text, word2ph, phone, tone, language_str, wav_path):
-        # print(text, word2ph,phone, tone, language_str)
         pold = phone
         w2pho = [i for i in word2ph]
         word2ph = [i for i in word2ph]
